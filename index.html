@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flappy Jumper</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  body {
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: #70c5ce;
+  }
+  
+  /* Top control bar */
+  #topBar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 54px;
+    background: #222;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    z-index: 100;
+  }
+  #topBar button {
+    background: #444;
+    border: none;
+    color: white;
+    font-size: 24px;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  #topBar button:hover {
+    background: #555;
+  }
+  
+  /* Canvas */
+  #gameCanvas {
+    display: block;
+    position: absolute;
+    top: 54px;
+    left: 0;
+    background: #70c5ce;
+  }
+  
+  /* DOM Bird fallback */
+  #domBird {
+    position: absolute;
+    pointer-events: none;
+    display: none;
+    width: 50px;
+    height: 50px;
+    z-index: 50;
+  }
+  .dom-bird .body {
+    position: absolute;
+    width: 50px;
+    height: 35px;
+    background: #ffd700;
+    border-radius: 50%;
+    top: 7px;
+  }
+  .dom-bird .wing {
+    position: absolute;
+    width: 30px;
+    height: 20px;
+    background: #ff8c00;
+    border-radius: 50%;
+    top: 20px;
+    left: 10px;
+    transform-origin: left center;
+  }
+  .dom-bird .eye {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: black;
+    border-radius: 50%;
+    top: 15px;
+    right: 10px;
+  }
+  
+  /* Settings Modal */
+  #settingsModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  #settingsModal.show {
+    display: flex;
+  }
+  .modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+  }
+  .modal-content h2 {
+    margin-bottom: 20px;
+  }
+  .modal-row {
+    margin-bottom: 15px;
+  }
+  .modal-row label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+  .modal-row input[type="file"] {
+    width: 100%;
+  }
+  .modal-row .file-name {
+    margin-top: 5px;
+    font-size: 12px;
+    color: #666;
+  }
+  .modal-buttons {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+  .modal-buttons button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  #modalClose {
+    background: #ccc;
+  }
+  #modalReady {
+    background: #4CAF50;
+    color: white;
+  }
+  
+  /* Game Over Overlay */
+  #gameOverBack {
+    position: fixed;
+    top: 54px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 150;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+  #gameOverBack.show {
+    display: flex;
+  }
+  #gameOverBack h1 {
+    color: white;
+    font-size: 72px;
+    margin-bottom: 20px;
+    text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+  }
+  #gameOverBack p {
+    color: white;
+    font-size: 24px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+  }
+</style>
+</head>
+<body>
+
+<!-- Top Control Bar -->
+<div id="topBar">
+  <button id="iconReady" title="Ready">▶️</button>
+  <button id="iconPause" title="Pause">⏸️</button>
+  <button id="iconRestart" title="Restart">🔄</button>
+  <button id="iconMute" title="Mute/Unmute">🔊</button>
+  <button id="iconSettings" title="Settings">⚙️</button>
+</div>
+
+<!-- Game Canvas -->
+<canvas id="gameCanvas"></canvas>
+
+<!-- DOM Bird Fallback -->
+<div id="domBird" class="dom-bird">
+  <div class="body"></div>
+  <div class="wing"></div>
+  <div class="eye"></div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal">
+  <div class="modal-content">
+    <h2>Settings</h2>
+    <div class="modal-row">
+      <label for="modalImage">Jumper Image:</label>
+      <input type="file" id="modalImage" accept="image/*">
+      <div class="file-name" id="modalImageName">No file chosen</div>
+    </div>
+    <div class="modal-row">
+      <label for="modalAudio">Background Audio:</label>
+      <input type="file" id="modalAudio" accept="audio/*">
+      <div class="file-name" id="modalAudioName">No file chosen</div>
+    </div>
+    <div class="modal-buttons">
+      <button id="modalClose">Close</button>
+      <button id="modalReady">Ready</button>
+    </div>
+  </div>
+</div>
+
+<!-- Game Over Overlay -->
+<div id="gameOverBack">
+  <h1>Game Over</h1>
+  <p>Press Space to restart</p>
+</div>
+
+<script>
+// ============================================
+// CONSTANTS
+// ============================================
+const BIRD_X = 150;
+const GRAVITY = 0.55;
+const FLAP = -11;
+const PIPE_W = 100;
+const GAP = 180;
+const PIPE_INTERVAL = 150; // frames
+
+// ============================================
+// GLOBAL VARIABLES
+// ============================================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const domBird = document.getElementById('domBird');
+const settingsModal = document.getElementById('settingsModal');
+const gameOverBack = document.getElementById('gameOverBack');
+
+let W = 0, H = 0; // Canvas logical dimensions
+let frames = 0;
+let score = 0;
+let best = parseInt(localStorage.getItem('best')) || 0;
+let started = false;
+let running = false;
+let paused = false;
+let muted = false;
+let bgScroll = 0; // Background scroll offset
+
+// Bird state
+const bird = {
+  y: 0,
+  vel: 0,
+  rotation: 0
+};
+
+// Pipes array
+let pipes = [];
+
+// Images and audio
+const birdImg = new Image();
+const bgAudio = new Audio();
+bgAudio.loop = false;
+
+let audioURL = null; // Track audio URL for revoke
+let lastScoreMultiple = 0; // Track last score multiple played
+
+// Background SVG data URL (simple sky/cloud pattern)
+const bgPattern = 'data:image/svg+xml,' + encodeURIComponent(`
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" fill="#70c5ce"/>
+  <circle cx="50" cy="50" r="20" fill="white" opacity="0.3"/>
+  <circle cx="150" cy="100" r="25" fill="white" opacity="0.3"/>
+  <circle cx="100" cy="150" r="15" fill="white" opacity="0.3"/>
+</svg>
+`);
+const bgImg = new Image();
+bgImg.src = bgPattern;
+
+// ============================================
+// INITIALIZATION
+// ============================================
+window.addEventListener('load', () => {
+  resize();
+  resetGame();
+  draw();
+  openModal(); // Show settings on first load
+});
+
+window.addEventListener('resize', resize);
+
+// ============================================
+// RESIZE & DPR HANDLING
+// ============================================
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  W = window.innerWidth;
+  H = window.innerHeight - 54;
+  
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  
+  ctx.scale(dpr, dpr);
+  
+  positionDomBird();
+}
+
+// ============================================
+// COORDINATE CONVERSION
+// ============================================
+function canvasToPage(cx, cy) {
+  const rect = canvas.getBoundingClientRect();
+  const pageX = rect.left + (cx / W) * rect.width;
+  const pageY = rect.top + (cy / H) * rect.height;
+  return { pageX, pageY };
+}
+
+// ============================================
+// DOM BIRD POSITIONING
+// ============================================
+function positionDomBird() {
+  if (domBird.style.display === 'none') return;
+  
+  const pos = canvasToPage(BIRD_X, bird.y);
+  domBird.style.left = (pos.pageX - 25) + 'px'; // center 50px bird
+  domBird.style.top = (pos.pageY - 25) + 'px';
+  domBird.style.transform = `rotate(${bird.rotation}deg)`;
+  
+  // Animate wing
+  const wing = domBird.querySelector('.wing');
+  if (wing) {
+    const wingAngle = Math.sin(frames * 0.2) * 20;
+    wing.style.transform = `rotate(${wingAngle}deg)`;
+  }
+}
+
+// ============================================
+// GAME LOGIC
+// ============================================
+function resetGame() {
+  frames = 0;
+  score = 0;
+  lastScoreMultiple = 0;
+  pipes = [];
+  bird.y = H / 2;
+  bird.vel = 0;
+  bird.rotation = 0;
+  started = false;
+  running = false;
+  paused = false;
+  hideGameOver();
+  stopAudio();
+}
+
+function spawnPipe() {
+  const minTop = 50;
+  const maxTop = H - GAP - 100;
+  const top = Math.random() * (maxTop - minTop) + minTop;
+  pipes.push({
+    x: W,
+    top: top,
+    passed: false
+  });
+}
+
+function update() {
+  if (!running || paused) return;
+  
+  frames++;
+  
+  // Scroll background
+  bgScroll -= 1;
+  if (bgScroll <= -200) bgScroll = 0; // Reset when pattern repeats (200px width)
+  
+  // Apply gravity
+  bird.vel += GRAVITY;
+  bird.y += bird.vel;
+  
+  // Rotate bird based on velocity
+  bird.rotation = Math.min(Math.max(bird.vel * 3, -30), 90);
+  
+  // Spawn pipes
+  if (frames % PIPE_INTERVAL === 0) {
+    spawnPipe();
+  }
+  
+  // Move pipes and check score
+  for (let i = pipes.length - 1; i >= 0; i--) {
+    const p = pipes[i];
+    p.x -= 4;
+    
+    // Increment score when pipe passes bird
+    if (!p.passed && p.x + PIPE_W < BIRD_X) {
+      p.passed = true;
+      score++;
+      
+      // Update best score
+      if (score > best) {
+        best = score;
+        localStorage.setItem('best', best);
+      }
+      
+      // Play background audio on multiples of 2
+      if (score > 0 && score % 2 === 0 && bgAudio.src && !muted) {
+        if (score !== lastScoreMultiple) {
+          bgAudio.currentTime = 0;
+          bgAudio.play().catch(e => console.log('Audio play failed:', e));
+          lastScoreMultiple = score;
+        }
+      }
+    }
+    
+    // Remove off-screen pipes
+    if (p.x + PIPE_W < 0) {
+      pipes.splice(i, 1);
+    }
+  }
+  
+  // Check collisions
+  // Ground and ceiling
+  if (bird.y + 25 > H - 50 || bird.y - 25 < 0) {
+    gameOver();
+    return;
+  }
+  
+  // Pipes
+  for (const p of pipes) {
+    if (BIRD_X + 25 > p.x && BIRD_X - 25 < p.x + PIPE_W) {
+      if (bird.y - 25 < p.top || bird.y + 25 > p.top + GAP) {
+        gameOver();
+        return;
+      }
+    }
+  }
+}
+
+function gameOver() {
+  running = false;
+  stopAudio();
+  showGameOver();
+  updateUI();
+}
+
+function stopAudio() {
+  bgAudio.pause();
+  bgAudio.currentTime = 0;
+}
+
+function loop() {
+  update();
+  draw();
+  if (running) {
+    requestAnimationFrame(loop);
+  }
+}
+
+function flap() {
+  if (!started) {
+    started = true;
+    running = true;
+    paused = false;
+    frames = 0;
+    requestAnimationFrame(loop);
+  }
+  
+  if (running && !paused) {
+    bird.vel = FLAP;
+  }
+}
+
+// ============================================
+// DRAWING
+// ============================================
+function drawBG() {
+  // Tile background image with scrolling effect
+  if (bgImg.complete) {
+    ctx.save();
+    ctx.translate(bgScroll, 0);
+    
+    // Draw enough tiles to cover canvas plus scroll offset
+    const tilesNeeded = Math.ceil(W / 200) + 2;
+    for (let i = 0; i < tilesNeeded; i++) {
+      ctx.drawImage(bgImg, i * 200, 0, 200, 200);
+      // Tile vertically too if needed
+      if (H > 200) {
+        for (let j = 1; j * 200 < H; j++) {
+          ctx.drawImage(bgImg, i * 200, j * 200, 200, 200);
+        }
+      }
+    }
+    
+    ctx.restore();
+  } else {
+    ctx.fillStyle = '#70c5ce';
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+function draw() {
+  // Clear canvas
+  ctx.clearRect(0, 0, W, H);
+  
+  // Draw background
+  drawBG();
+  
+  // Draw pipes (Mario-style)
+  for (const p of pipes) {
+    // Top pipe body
+    ctx.fillStyle = '#5cb85c';
+    ctx.fillRect(p.x + 10, 0, PIPE_W - 20, p.top - 30);
+    
+    // Top pipe cap
+    ctx.fillStyle = '#5cb85c';
+    ctx.fillRect(p.x, p.top - 30, PIPE_W, 30);
+    
+    // Top pipe cap border
+    ctx.strokeStyle = '#2d5a2d';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(p.x, p.top - 30, PIPE_W, 30);
+    
+    // Top pipe cap highlight
+    ctx.fillStyle = '#6fd66f';
+    ctx.fillRect(p.x + 5, p.top - 25, PIPE_W - 10, 8);
+    
+    // Top pipe body border
+    ctx.strokeStyle = '#2d5a2d';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(p.x + 10, 0, PIPE_W - 20, p.top - 30);
+    
+    // Top pipe body highlight
+    ctx.fillStyle = '#6fd66f';
+    ctx.fillRect(p.x + 15, 0, 15, p.top - 30);
+    
+    // Bottom pipe body
+    ctx.fillStyle = '#5cb85c';
+    ctx.fillRect(p.x + 10, p.top + GAP + 30, PIPE_W - 20, H - (p.top + GAP + 30));
+    
+    // Bottom pipe cap
+    ctx.fillStyle = '#5cb85c';
+    ctx.fillRect(p.x, p.top + GAP, PIPE_W, 30);
+    
+    // Bottom pipe cap border
+    ctx.strokeStyle = '#2d5a2d';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(p.x, p.top + GAP, PIPE_W, 30);
+    
+    // Bottom pipe cap highlight
+    ctx.fillStyle = '#6fd66f';
+    ctx.fillRect(p.x + 5, p.top + GAP + 5, PIPE_W - 10, 8);
+    
+    // Bottom pipe body border
+    ctx.strokeStyle = '#2d5a2d';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(p.x + 10, p.top + GAP + 30, PIPE_W - 20, H - (p.top + GAP + 30));
+    
+    // Bottom pipe body highlight
+    ctx.fillStyle = '#6fd66f';
+    ctx.fillRect(p.x + 15, p.top + GAP + 30, 15, H - (p.top + GAP + 30));
+  }
+  
+  // Draw ground
+  ctx.fillStyle = '#e6c76d';
+  ctx.fillRect(0, H - 50, W, 50);
+  ctx.strokeStyle = '#c9a859';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(0, H - 50, W, 50);
+  
+  // Draw bird
+  if (birdImg.src && birdImg.complete) {
+    // Draw image on canvas
+    ctx.save();
+    ctx.translate(BIRD_X, bird.y);
+    ctx.rotate((bird.rotation * Math.PI) / 180);
+    ctx.drawImage(birdImg, -25, -25, 50, 50);
+    ctx.restore();
+    
+    // Hide DOM bird
+    domBird.style.display = 'none';
+  } else {
+    // Show and position DOM bird
+    domBird.style.display = 'block';
+    positionDomBird();
+  }
+  
+  // Draw score
+  ctx.fillStyle = 'white';
+  ctx.strokeStyle = 'black';
+  ctx.lineWidth = 4;
+  ctx.font = 'bold 48px Arial';
+  ctx.textAlign = 'center';
+  ctx.strokeText(score, W / 2, 80);
+  ctx.fillText(score, W / 2, 80);
+  
+  // Draw best score
+  ctx.font = 'bold 20px Arial';
+  ctx.strokeText('Best: ' + best, W / 2, 110);
+  ctx.fillText('Best: ' + best, W / 2, 110);
+  
+  // Draw "Paused" overlay
+  if (paused && started) {
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 64px Arial';
+    ctx.textAlign = 'center';
+    ctx.strokeText('PAUSED', W / 2, H / 2);
+    ctx.fillText('PAUSED', W / 2, H / 2);
+  }
+  
+  // Position DOM bird at end to avoid misalignment
+  positionDomBird();
+}
+
+// ============================================
+// UI FUNCTIONS
+// ============================================
+function updateUI() {
+  // Placeholder for UI updates
+}
+
+function openModal() {
+  settingsModal.classList.add('show');
+}
+
+function closeModal() {
+  settingsModal.classList.remove('show');
+}
+
+function showGameOver() {
+  gameOverBack.classList.add('show');
+}
+
+function hideGameOver() {
+  gameOverBack.classList.remove('show');
+}
+
+// ============================================
+// EVENT LISTENERS
+// ============================================
+
+// Canvas click
+canvas.addEventListener('click', () => {
+  if (running || !started) {
+    flap();
+  }
+});
+
+// Keyboard events
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'ArrowUp') {
+    e.preventDefault();
+    
+    // If game over, restart
+    if (!running && started) {
+      resetGame();
+      setTimeout(() => {
+        flap();
+      }, 50);
+    } else {
+      flap();
+    }
+  }
+});
+
+// Top bar buttons
+document.getElementById('iconReady').addEventListener('click', () => {
+  started = false;
+  running = false;
+  paused = false;
+  hideGameOver();
+  draw();
+});
+
+document.getElementById('iconPause').addEventListener('click', () => {
+  if (started) {
+    paused = !paused;
+    if (!paused && running) {
+      requestAnimationFrame(loop);
+    }
+    draw();
+  }
+});
+
+document.getElementById('iconRestart').addEventListener('click', () => {
+  resetGame();
+  draw();
+});
+
+document.getElementById('iconMute').addEventListener('click', () => {
+  muted = !muted;
+  document.getElementById('iconMute').textContent = muted ? '🔇' : '🔊';
+  if (muted) {
+    stopAudio();
+  }
+});
+
+document.getElementById('iconSettings').addEventListener('click', () => {
+  openModal();
+});
+
+// Modal buttons
+document.getElementById('modalClose').addEventListener('click', () => {
+  closeModal();
+});
+
+document.getElementById('modalReady').addEventListener('click', () => {
+  closeModal();
+  started = false;
+  running = false;
+});
+
+// File inputs
+document.getElementById('modalImage').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    document.getElementById('modalImageName').textContent = file.name;
+    
+    // Set onload before src
+    birdImg.onload = () => {
+      domBird.style.display = 'none';
+      draw();
+    };
+    birdImg.src = URL.createObjectURL(file);
+  } else {
+    document.getElementById('modalImageName').textContent = 'No file chosen';
+  }
+});
+
+document.getElementById('modalAudio').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    document.getElementById('modalAudioName').textContent = file.name;
+    
+    // Revoke previous URL
+    if (audioURL) {
+      URL.revokeObjectURL(audioURL);
+    }
+    
+    audioURL = URL.createObjectURL(file);
+    bgAudio.src = audioURL;
+  } else {
+    document.getElementById('modalAudioName').textContent = 'No file chosen';
+  }
+});
+
+</script>
+</body>
+</html>

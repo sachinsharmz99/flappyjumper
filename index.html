@@ -237,11 +237,15 @@
 // CONSTANTS
 // ============================================
 const BIRD_X = 150;
-const GRAVITY = 0.5;
-const FLAP = -8;
 const PIPE_W = 100;
 const GAP = 180;
-const PIPE_INTERVAL = 180; // frames
+
+const isMobile = /Android|iPhone|iPad|iPod|Samsung|Mobile/i.test(navigator.userAgent);
+
+const GRAVITY = isMobile ? 0.45 : 0.5;
+const FLAP    = isMobile ? -9   : -9;
+const PIPE_SPEED = isMobile ? 3.4 : 6;
+const PIPE_INTERVAL = isMobile ? 150 : 90; // frames
 
 // ============================================
 // GLOBAL VARIABLES
@@ -404,7 +408,7 @@ function update() {
   // Move pipes and check score
   for (let i = pipes.length - 1; i >= 0; i--) {
     const p = pipes[i];
-    p.x -= 2.5;
+    p.x -= PIPE_SPEED;
     
     // Increment score when pipe passes bird
     if (!p.passed && p.x + PIPE_W < BIRD_X) {

@@ -237,8 +237,8 @@
 // CONSTANTS
 // ============================================
 const BIRD_X = 150;
-const GRAVITY = 0.50;
-const FLAP = -9;
+const GRAVITY = 0.5;
+const FLAP = -8;
 const PIPE_W = 100;
 const GAP = 180;
 const PIPE_INTERVAL = 180; // frames
@@ -404,7 +404,7 @@ function update() {
   // Move pipes and check score
   for (let i = pipes.length - 1; i >= 0; i--) {
     const p = pipes[i];
-    p.x -= 4;
+    p.x -= 2.5;
     
     // Increment score when pipe passes bird
     if (!p.passed && p.x + PIPE_W < BIRD_X) {
